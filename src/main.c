@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define ITU_IMPLEMENTATION
 #include "itu.h"
 
 #define STB_IMAGE_IMPLEMENTATION
