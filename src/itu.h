@@ -424,14 +424,17 @@ Character *load_allowed_characters() {
 	};
 }
 
-long calculate_color(Character character, Image image, int x, int y, Color *fgColor, Color *bgColor) {
+long calculate_color(Character character, Image image, int x, int y, float scale_x, float scale_y, Color *fgColor,
+					 Color *bgColor) {
 	// calculate average fg and bg color
 	long fgColorArr[] = {0, 0, 0};
 	long bgColorArr[] = {0, 0, 0};
 
 	for (int i = 0; i < CHARACTER_HEIGHT; i++) {
 		for (int j = 0; j < CHARACTER_WIDTH; j++) {
-			int idx = ((i + y) * image.width + (j + x)) * 3;
+			int pos_x = (int)((float)(j + x * CHARACTER_WIDTH) / scale_x);
+			int pos_y = (int)((float)(i + y * CHARACTER_HEIGHT) / scale_y);
+			int idx = (pos_y * image.width + pos_x) * 3;
 
 			if (character.pixels[i * CHARACTER_WIDTH + j]) {
 				fgColorArr[0] += image.data[idx + 0];
@@ -458,7 +461,9 @@ long calculate_color(Character character, Image image, int x, int y, Color *fgCo
 
 	for (int i = 0; i < CHARACTER_HEIGHT; i++) {
 		for (int j = 0; j < CHARACTER_WIDTH; j++) {
-			int idx = ((i + y) * image.width + (j + x)) * 3;
+			int pos_x = (int)((float)(j + x * CHARACTER_WIDTH) / scale_x);
+			int pos_y = (int)((float)(i + y * CHARACTER_HEIGHT) / scale_y);
+			int idx = (pos_y * image.width + pos_x) * 3;
 
 			if (character.pixels[i * CHARACTER_WIDTH + j]) {
 				error += abs(fgColorArr[0] - image.data[idx + 0]);
@@ -492,7 +497,7 @@ char *to_string(Character character, Color fgColor, Color bgColor) {
 	return str;
 }
 
-char *convert_image_area(Image image, int x, int y) {
+char *convert_image_area(Image image, int x, int y, float scale_x, float scale_y) {
 	long min = LONG_MAX;
 	Character minChar;
 	Color minFgColor;
@@ -502,7 +507,7 @@ char *convert_image_area(Image image, int x, int y) {
 
 	for (int i = 0; i < ALLOWED_CHARACTER_COUNT; i++) {
 		Color fgColor, bgColor;
-		int error = calculate_color(allowed_characters[i], image, x, y, &fgColor, &bgColor);
+		int error = calculate_color(allowed_characters[i], image, x, y, scale_x, scale_y, &fgColor, &bgColor);
 
 		if (error < min) {
 			min = error;
@@ -515,27 +520,36 @@ char *convert_image_area(Image image, int x, int y) {
 	return to_string(minChar, minFgColor, minBgColor);
 }
 
-char *convert_image(unsigned char *data, int width, int height) {
-	if (width % CHARACTER_WIDTH != 0 || height % CHARACTER_HEIGHT != 0) return NULL;
+char *convert_image(unsigned char *data, int in_width, int in_height, int out_width, int out_height) {
+	if (in_width < 0 || in_height < 0) return NULL;
 
-	Image image = (Image){data, width, height};
+	float scale_x = (float)out_width * (float)CHARACTER_WIDTH / (float)in_width;
+	float scale_y = (float)out_height * (float)CHARACTER_HEIGHT / (float)in_height;
 
-	char *str = malloc(CHARACTER_STRLEN * ((width / CHARACTER_WIDTH) * (height / CHARACTER_HEIGHT)) + height + 1);
+	Image image = (Image){data, in_width, in_height};
+
+	// allocate space for charaters, newlines, color reset, and \0
+	char *str = malloc(CHARACTER_STRLEN * out_width * out_height + (out_height - 1) + 4 + 1);
 	long offset = 0;
 
-	for (int i = 0; i < height / CHARACTER_HEIGHT; i++) {
-		for (int j = 0; j < width / CHARACTER_WIDTH; j++) {
-			char *tmp = convert_image_area(image, j * CHARACTER_WIDTH, i * CHARACTER_HEIGHT);
+	for (int i = 0; i < out_height; i++) {
+		for (int j = 0; j < out_width; j++) {
+			char *tmp = convert_image_area(image, j, i, scale_x, scale_y);
 			memcpy(str + offset, tmp, CHARACTER_STRLEN);
 			offset += CHARACTER_STRLEN;
 			free(tmp);
 		}
 
-		str[offset] = '\n';
-		offset += 1;
+		if (i != out_height - 1) {
+			str[offset] = '\n';
+			offset += 1;
+		}
 	}
 
-	str[offset] = '\0';
+	char end[] = "\e[0m";
+	memcpy(str + offset, end, 5);
+
+	// str[offset] = '\0';
 
 	return str;
 }
