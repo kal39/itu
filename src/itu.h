@@ -1,6 +1,21 @@
 #ifndef ITU_H
 #define ITU_H
 
+/*
+ * Returns a string representation of an image using unicode block elements and 24-bit truecolor.
+ *
+ * Parameters:
+ *   data: pixel data of the input image in 3 channels (rgb); same format as stb_image
+ *   in_width: width of input image in px
+ *   in_height: height of the input image in px
+ *   out_width: width of the output image in characters
+ *   out_height: height of the output image in characters
+ *               <<NOTE: for characters, width:height = 1:2>>
+ *   detail: between 0 and 7, 0 lowest detail, 7 highest detail
+ *
+ * Returns:
+ *   a string that can be directly printed using printf, <<MUST BE FREED BY USER!!>>
+ */
 char *convert_image(unsigned char *data, int in_width, int in_height, int out_width, int out_height, int detail);
 
 #ifdef ITU_IMPLEMENTATION
@@ -17,8 +32,8 @@ char *convert_image(unsigned char *data, int in_width, int in_height, int out_wi
 int CUTOFF_POINTS[] = {1, 2, 4, 6, 10, 14, 19};
 
 typedef struct itu_Character {
-	char *character;
-	int *pixels;
+	char *character; // string because block elements are multibyte characters
+	char *pixels;	 // 1 for fg pixels, 0 for bg pixels
 } itu_Character;
 
 typedef struct itu_Image {
@@ -37,7 +52,7 @@ typedef struct itu_Color {
 
 itu_Character ALLOWED_CHARACTERS[] = {
 	(itu_Character){"▄",
-					(int[]){
+					(char[]){
 						0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 						0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 						1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -45,7 +60,7 @@ itu_Character ALLOWED_CHARACTERS[] = {
 					}},
 
 	(itu_Character){"▌",
-					(int[]){
+					(char[]){
 						1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0,
 						1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0,
 						1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0,
@@ -53,7 +68,7 @@ itu_Character ALLOWED_CHARACTERS[] = {
 					}},
 
 	(itu_Character){"▂",
-					(int[]){
+					(char[]){
 						0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 						0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 						0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -61,7 +76,7 @@ itu_Character ALLOWED_CHARACTERS[] = {
 					}},
 
 	(itu_Character){"▆",
-					(int[]){
+					(char[]){
 						0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 						1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 						1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -69,7 +84,7 @@ itu_Character ALLOWED_CHARACTERS[] = {
 					}},
 
 	(itu_Character){"▎",
-					(int[]){
+					(char[]){
 						1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0,
 						1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0,
 						1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0,
@@ -77,7 +92,7 @@ itu_Character ALLOWED_CHARACTERS[] = {
 					}},
 
 	(itu_Character){"▊",
-					(int[]){
+					(char[]){
 						1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0,
 						1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0,
 						1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0,
@@ -85,7 +100,7 @@ itu_Character ALLOWED_CHARACTERS[] = {
 					}},
 
 	(itu_Character){"▁",
-					(int[]){
+					(char[]){
 						0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 						0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 						0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -93,7 +108,7 @@ itu_Character ALLOWED_CHARACTERS[] = {
 					}},
 
 	(itu_Character){"▃",
-					(int[]){
+					(char[]){
 						0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 						0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 						0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -101,7 +116,7 @@ itu_Character ALLOWED_CHARACTERS[] = {
 					}},
 
 	(itu_Character){"▅",
-					(int[]){
+					(char[]){
 						0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 						0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 						1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -109,7 +124,7 @@ itu_Character ALLOWED_CHARACTERS[] = {
 					}},
 
 	(itu_Character){"▇",
-					(int[]){
+					(char[]){
 						0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 						1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 						1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -117,7 +132,7 @@ itu_Character ALLOWED_CHARACTERS[] = {
 					}},
 
 	(itu_Character){"▏",
-					(int[]){
+					(char[]){
 						1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
 						1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
 						1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
@@ -125,7 +140,7 @@ itu_Character ALLOWED_CHARACTERS[] = {
 					}},
 
 	(itu_Character){"▍",
-					(int[]){
+					(char[]){
 						1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0,
 						1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0,
 						1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0,
@@ -133,7 +148,7 @@ itu_Character ALLOWED_CHARACTERS[] = {
 					}},
 
 	(itu_Character){"▋",
-					(int[]){
+					(char[]){
 						1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0,
 						1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0,
 						1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0,
@@ -141,7 +156,7 @@ itu_Character ALLOWED_CHARACTERS[] = {
 					}},
 
 	(itu_Character){"▉",
-					(int[]){
+					(char[]){
 						1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0,
 						1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0,
 						1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0,
@@ -149,7 +164,7 @@ itu_Character ALLOWED_CHARACTERS[] = {
 					}},
 
 	(itu_Character){"▝",
-					(int[]){
+					(char[]){
 						0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1,
 						0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1,
 						0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -157,7 +172,7 @@ itu_Character ALLOWED_CHARACTERS[] = {
 					}},
 
 	(itu_Character){"▘",
-					(int[]){
+					(char[]){
 						1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0,
 						1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0,
 						0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -165,7 +180,7 @@ itu_Character ALLOWED_CHARACTERS[] = {
 					}},
 
 	(itu_Character){"▗",
-					(int[]){
+					(char[]){
 						0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 						0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 						0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1,
@@ -173,7 +188,7 @@ itu_Character ALLOWED_CHARACTERS[] = {
 					}},
 
 	(itu_Character){"▖",
-					(int[]){
+					(char[]){
 						0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 						0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 						1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0,
@@ -181,7 +196,7 @@ itu_Character ALLOWED_CHARACTERS[] = {
 					}},
 
 	(itu_Character){"▚",
-					(int[]){
+					(char[]){
 						1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0,
 						1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0,
 						0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1,
@@ -190,6 +205,7 @@ itu_Character ALLOWED_CHARACTERS[] = {
 };
 
 long calculate_color(itu_Character character, itu_Image image, int x, int y, itu_Color *fgColor, itu_Color *bgColor) {
+	// don't use itu_Color because it uses unsigned chars to store rgb values; thus overflows
 	int fgColorArr[3] = {0, 0, 0}, bgColorArr[3] = {0, 0, 0};
 	int fgColorCount = 0, bgColorCount = 0, error = 0;
 
@@ -199,6 +215,7 @@ long calculate_color(itu_Character character, itu_Image image, int x, int y, itu
 			int pos_y = (int)((float)(i + y * CHARACTER_HEIGHT) / image.scale_y);
 			int idx = (pos_y * image.width + pos_x) * 3;
 
+			// colorArr and colorCount point to either fg or bg variables
 			int(*colorArr)[3] = character.pixels[i * CHARACTER_WIDTH + j] ? &fgColorArr : &bgColorArr;
 			int *colorCount = character.pixels[i * CHARACTER_WIDTH + j] ? &fgColorCount : &bgColorCount;
 
@@ -213,6 +230,7 @@ long calculate_color(itu_Character character, itu_Image image, int x, int y, itu
 		}
 	}
 
+	// assign to itu_Color after dividing to avoid overflow
 	fgColor->r = fgColorArr[0] / fgColorCount;
 	fgColor->g = fgColorArr[1] / fgColorCount;
 	fgColor->b = fgColorArr[2] / fgColorCount;
@@ -228,6 +246,7 @@ char *to_string(itu_Character character, itu_Color fgColor, itu_Color bgColor) {
 	char *str = malloc(CHARACTER_STRLEN + 1);
 	if (!str) return NULL;
 
+	// use leading 0s to keep string length consistent
 	sprintf(str,
 			"\x1b[38;2;%03d;%03d;%03dm\x1b[48;2;%03d;%03d;%03dm%s",
 			fgColor.r,
@@ -242,7 +261,7 @@ char *to_string(itu_Character character, itu_Color fgColor, itu_Color bgColor) {
 }
 
 char *convert_image_area(itu_Image image, int x, int y, int detail) {
-	long min = LONG_MAX;
+	int min = INT_MAX;
 	itu_Character minChar;
 	itu_Color minFgColor, minBgColor;
 
@@ -297,6 +316,7 @@ char *convert_image(unsigned char *data, int in_width, int in_height, int out_wi
 		}
 	}
 
+	// reset colors
 	char end[] = "\e[0m";
 	memcpy(str + offset, end, 4);
 	str[strLen - 1] = '\0';
