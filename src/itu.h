@@ -1,30 +1,46 @@
 #ifndef ITU_H
 #define ITU_H
 
+/*
+ * Creates a string with the correct size to be used with itu_convert_image().
+ *
+ * Parameters:
+ *   out_width:  width of the output image in characters
+ *   out_height: height of the output image in characters
+ *
+ * Returns:
+ *   NULL:   string creation unsuccessful
+ *   (else): string that can be passed to itu_convert_image() <<<FREE AFTER USE!!>>>
+ */
+
 char *itu_allocate_string(int out_width, int out_height);
 
 /*
- * Returns a string representation of an image using unicode block elements and 24-bit truecolor.
+ * Writes string representation of an image using unicode block elements and 24-bit truecolor to the out parameter.
+ * NOTE: for characters, width:height = 1:2
  *
  * Parameters:
- *   data: pixel data of the input image in 3 channels (rgb); same format as stb_image
- *   in_width: width of input image in px
- *   in_height: height of the input image in px
- *   out_width: width of the output image in characters
+ *   out:        string to write to (allocate using itu_allocate_string())
+ *   data:       pixel data of the input image in 3 channels (rgb); same format as stb_image
+ *   in_width:   width of input image in px
+ *   in_height:  height of the input image in px
+ *   out_width:  width of the output image in characters
  *   out_height: height of the output image in characters
- *               <<NOTE: for characters, width:height = 1:2>>
- *   detail: between 0 (inclusive) and 6 (inclusive), 0 lowest detail, 6 highest detail
+ *   detail:     between 0 (inclusive) and 6 (inclusive), 0 lowest detail, 6 highest detail
  *
  * Returns:
- *   a string that can be directly printed using printf, <<MUST BE FREED BY USER!!>>
+ *   0:  conversion successful
+ *   -1: in/out dimensions unsupported
+ *   -2: malloc() failed
  */
 
-void itu_convert_image(char *out, unsigned char *data, int in_width, int in_height, int out_width, int out_height,
-					   int detail);
+int itu_convert_image(char *out, unsigned char *data, int in_width, int in_height, int out_width, int out_height,
+					  int detail);
 
 #ifdef ITU_IMPLEMENTATION
 
 #include <limits.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -53,6 +69,14 @@ typedef struct itu_Color {
 	unsigned char g;
 	unsigned char b;
 } itu_Color;
+
+typedef struct itu_ThreadArgs {
+	int out_width;
+	char *out;
+	itu_Image image;
+	int y;
+	int detail;
+} itu_ThreadArgs;
 
 itu_Character ALLOWED_CHARACTERS[] = {
 	(itu_Character){"▄",
@@ -247,9 +271,9 @@ static long itu_calculate_color(itu_Character character, itu_Image image, int x,
 	return error;
 }
 
-static void itu_to_string(char *out, long *offset, itu_Character character, itu_Color fgColor, itu_Color bgColor) {
+static void itu_to_string(char *out, itu_Character character, itu_Color fgColor, itu_Color bgColor) {
 	// use leading 0s to keep string length consistent
-	sprintf(out + *offset,
+	sprintf(out,
 			"\x1b[38;2;%03d;%03d;%03dm\x1b[48;2;%03d;%03d;%03dm%s",
 			fgColor.r,
 			fgColor.g,
@@ -258,10 +282,9 @@ static void itu_to_string(char *out, long *offset, itu_Character character, itu_
 			bgColor.g,
 			bgColor.b,
 			character.character);
-	*offset += CHARACTER_STRLEN;
 }
 
-static void itu_convert_image_area(char *out, long *offset, itu_Image image, int x, int y, int detail) {
+static void itu_convert_image_area(char *out, itu_Image image, int x, int y, int detail) {
 	int min = INT_MAX;
 	itu_Character minChar;
 	itu_Color minFgColor, minBgColor;
@@ -278,7 +301,19 @@ static void itu_convert_image_area(char *out, long *offset, itu_Image image, int
 		}
 	}
 
-	itu_to_string(out, offset, minChar, minFgColor, minBgColor);
+	itu_to_string(out, minChar, minFgColor, minBgColor);
+}
+
+static void *itu_convert_row_threaded(void *_args) {
+	itu_ThreadArgs *args = (itu_ThreadArgs *)_args;
+
+	for (int j = 0; j < args->out_width; j++) {
+		long offset = CHARACTER_STRLEN * ((args->y * args->out_width) + j) + args->y;
+		itu_convert_image_area(args->out + offset, args->image, j, args->y, args->detail);
+	}
+
+	// newline
+	*(args->out + CHARACTER_STRLEN * (args->y + 1) * args->out_width + args->y) = '\n';
 }
 
 char *itu_allocate_string(int out_width, int out_height) {
@@ -289,10 +324,10 @@ char *itu_allocate_string(int out_width, int out_height) {
 	return malloc(strLen);
 }
 
-void itu_convert_image(char *out, unsigned char *data, int in_width, int in_height, int out_width, int out_height,
-					   int detail) {
+int itu_convert_image(char *out, unsigned char *data, int in_width, int in_height, int out_width, int out_height,
+					  int detail) {
 
-	if (in_width < 0 || in_height < 0) return;
+	if (in_width < 0 || in_height < 0 || out_width < 0 || out_height < 0) return -1;
 	detail = detail < 0 ? 0 : detail > CUTOFF_POINT_COUNT - 1 ? CUTOFF_POINT_COUNT - 1 : detail;
 
 	float scale_x = (float)out_width * (float)CHARACTER_WIDTH / (float)in_width;
@@ -300,20 +335,34 @@ void itu_convert_image(char *out, unsigned char *data, int in_width, int in_heig
 
 	itu_Image image = (itu_Image){data, in_width, in_height, scale_x, scale_y};
 
-	long offset = 0;
+	itu_ThreadArgs *args = malloc(sizeof(itu_ThreadArgs) * out_height);
+	pthread_t *threads = malloc(sizeof(pthread_t) * out_height);
+
+	if (!args || !threads) return -2;
 
 	for (int i = 0; i < out_height; i++) {
-		for (int j = 0; j < out_width; j++) itu_convert_image_area(out, &offset, image, j, i, detail);
+		args[i] = (itu_ThreadArgs){
+			out_width,
+			out,
+			image,
+			i,
+			detail,
+		};
 
-		if (i != out_height - 1) {
-			out[offset] = '\n';
-			offset += 1;
-		}
+		pthread_create(&threads[i], NULL, itu_convert_row_threaded, &args[i]);
 	}
 
+	// wait for threads to finish
+	for (int i = 0; i < out_height; i++) pthread_join(threads[i], NULL);
+
+	free(threads);
+	free(args);
+
 	// reset colors
-	char end[] = "\e[0m\0";
-	memcpy(out + offset, end, 5);
+	long offset = CHARACTER_STRLEN * out_width * out_height + (out_height - 1);
+	sprintf(out + offset, "\e[0m");
+
+	return 0;
 }
 
 #endif

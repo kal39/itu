@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
+#include <sys/time.h>
 
 #define ITU_IMPLEMENTATION
 #include "itu.h"
@@ -21,11 +21,18 @@ void benchmark(char *fileName, int times) {
 
 	for (int i = 0; i < 7; i++) {
 
-		clock_t start = clock();
-		for (int j = 0; j < times; j++) itu_convert_image(out, data, width, height, outWidth, outHeight, i);
-		clock_t end = clock();
+		struct timeval start;
+		gettimeofday(&start, NULL);
 
-		double totalTime = (double)(end - start) / CLOCKS_PER_SEC;
+		for (int j = 0; j < times; j++) itu_convert_image(out, data, width, height, outWidth, outHeight, i);
+
+		struct timeval end;
+		gettimeofday(&end, NULL);
+
+		double startTime = (double)start.tv_sec + (double)start.tv_usec / 1000000.0;
+		double endTime = (double)end.tv_sec + (double)end.tv_usec / 1000000.0;
+
+		double totalTime = endTime - startTime;
 		double timePerFrame = totalTime / (double)times;
 		printf("<<detail: %d>> total time: %f[s], time per frame: %f[s], fps: %f\n",
 			   i,
