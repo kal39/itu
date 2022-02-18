@@ -1,6 +1,8 @@
 #ifndef ITU_H
 #define ITU_H
 
+char *itu_allocate_string(int out_width, int out_height);
+
 /*
  * Returns a string representation of an image using unicode block elements and 24-bit truecolor.
  *
@@ -11,12 +13,14 @@
  *   out_width: width of the output image in characters
  *   out_height: height of the output image in characters
  *               <<NOTE: for characters, width:height = 1:2>>
- *   detail: between 0 and 7, 0 lowest detail, 7 highest detail
+ *   detail: between 0 (inclusive) and 6 (inclusive), 0 lowest detail, 6 highest detail
  *
  * Returns:
  *   a string that can be directly printed using printf, <<MUST BE FREED BY USER!!>>
  */
-char *convert_image(unsigned char *data, int in_width, int in_height, int out_width, int out_height, int detail);
+
+void itu_convert_image(char *out, unsigned char *data, int in_width, int in_height, int out_width, int out_height,
+					   int detail);
 
 #ifdef ITU_IMPLEMENTATION
 
@@ -204,7 +208,8 @@ itu_Character ALLOWED_CHARACTERS[] = {
 					}},
 };
 
-long calculate_color(itu_Character character, itu_Image image, int x, int y, itu_Color *fgColor, itu_Color *bgColor) {
+static long itu_calculate_color(itu_Character character, itu_Image image, int x, int y, itu_Color *fgColor,
+								itu_Color *bgColor) {
 	// don't use itu_Color because it uses unsigned chars to store rgb values; thus overflows
 	int fgColorArr[3] = {0, 0, 0}, bgColorArr[3] = {0, 0, 0};
 	int fgColorCount = 0, bgColorCount = 0, error = 0;
@@ -242,12 +247,9 @@ long calculate_color(itu_Character character, itu_Image image, int x, int y, itu
 	return error;
 }
 
-char *to_string(itu_Character character, itu_Color fgColor, itu_Color bgColor) {
-	char *str = malloc(CHARACTER_STRLEN + 1);
-	if (!str) return NULL;
-
+static void itu_to_string(char *out, long *offset, itu_Character character, itu_Color fgColor, itu_Color bgColor) {
 	// use leading 0s to keep string length consistent
-	sprintf(str,
+	sprintf(out + *offset,
 			"\x1b[38;2;%03d;%03d;%03dm\x1b[48;2;%03d;%03d;%03dm%s",
 			fgColor.r,
 			fgColor.g,
@@ -256,18 +258,17 @@ char *to_string(itu_Character character, itu_Color fgColor, itu_Color bgColor) {
 			bgColor.g,
 			bgColor.b,
 			character.character);
-
-	return str;
+	*offset += CHARACTER_STRLEN;
 }
 
-char *convert_image_area(itu_Image image, int x, int y, int detail) {
+static void itu_convert_image_area(char *out, long *offset, itu_Image image, int x, int y, int detail) {
 	int min = INT_MAX;
 	itu_Character minChar;
 	itu_Color minFgColor, minBgColor;
 
 	for (int i = 0; i < CUTOFF_POINTS[detail]; i++) {
 		itu_Color fgColor, bgColor;
-		int error = calculate_color(ALLOWED_CHARACTERS[i], image, x, y, &fgColor, &bgColor);
+		int error = itu_calculate_color(ALLOWED_CHARACTERS[i], image, x, y, &fgColor, &bgColor);
 
 		if (error < min) {
 			min = error;
@@ -277,11 +278,21 @@ char *convert_image_area(itu_Image image, int x, int y, int detail) {
 		}
 	}
 
-	return to_string(minChar, minFgColor, minBgColor);
+	itu_to_string(out, offset, minChar, minFgColor, minBgColor);
 }
 
-char *convert_image(unsigned char *data, int in_width, int in_height, int out_width, int out_height, int detail) {
-	if (in_width < 0 || in_height < 0) return NULL;
+char *itu_allocate_string(int out_width, int out_height) {
+	if (out_width < 0 || out_height < 0) return NULL;
+
+	// allocate space for charaters, newlines, color reset, and \0
+	int strLen = CHARACTER_STRLEN * out_width * out_height + (out_height - 1) + 4 + 1;
+	return malloc(strLen);
+}
+
+void itu_convert_image(char *out, unsigned char *data, int in_width, int in_height, int out_width, int out_height,
+					   int detail) {
+
+	if (in_width < 0 || in_height < 0) return;
 	detail = detail < 0 ? 0 : detail > CUTOFF_POINT_COUNT - 1 ? CUTOFF_POINT_COUNT - 1 : detail;
 
 	float scale_x = (float)out_width * (float)CHARACTER_WIDTH / (float)in_width;
@@ -289,39 +300,20 @@ char *convert_image(unsigned char *data, int in_width, int in_height, int out_wi
 
 	itu_Image image = (itu_Image){data, in_width, in_height, scale_x, scale_y};
 
-	// allocate space for charaters, newlines, color reset, and \0
-	int strLen = CHARACTER_STRLEN * out_width * out_height + (out_height - 1) + 4 + 1;
-	char *str = malloc(strLen);
-	if (!str) return NULL;
-
 	long offset = 0;
 
 	for (int i = 0; i < out_height; i++) {
-		for (int j = 0; j < out_width; j++) {
-			char *tmp = convert_image_area(image, j, i, detail);
-
-			if (!tmp) {
-				free(str);
-				return NULL;
-			}
-
-			memcpy(str + offset, tmp, CHARACTER_STRLEN);
-			offset += CHARACTER_STRLEN;
-			free(tmp);
-		}
+		for (int j = 0; j < out_width; j++) itu_convert_image_area(out, &offset, image, j, i, detail);
 
 		if (i != out_height - 1) {
-			str[offset] = '\n';
+			out[offset] = '\n';
 			offset += 1;
 		}
 	}
 
 	// reset colors
-	char end[] = "\e[0m";
-	memcpy(str + offset, end, 4);
-	str[strLen - 1] = '\0';
-
-	return str;
+	char end[] = "\e[0m\0";
+	memcpy(out + offset, end, 5);
 }
 
 #endif
