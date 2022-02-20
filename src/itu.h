@@ -326,7 +326,6 @@ char *itu_allocate_string(int out_width, int out_height) {
 
 int itu_convert_image(char *out, unsigned char *data, int in_width, int in_height, int out_width, int out_height,
 					  int detail) {
-
 	if (in_width < 0 || in_height < 0 || out_width < 0 || out_height < 0) return -1;
 	detail = detail < 0 ? 0 : detail > CUTOFF_POINT_COUNT - 1 ? CUTOFF_POINT_COUNT - 1 : detail;
 

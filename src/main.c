@@ -47,7 +47,7 @@ void benchmark(char *fileName, int times) {
 
 void display(char *fileName) {
 	int width, height;
-	unsigned char *data = stbi_load("train.png", &width, &height, NULL, 3);
+	unsigned char *data = stbi_load(fileName, &width, &height, NULL, 3);
 
 	int outWidth = 800 / 8 * 1.5;
 	int outHeight = 640 / 16 * 1.5;
@@ -62,5 +62,5 @@ void display(char *fileName) {
 
 int main(void) {
 	display("train.png");
-	benchmark("train.png", 10);
+	// benchmark("train.png", 10);
 }
