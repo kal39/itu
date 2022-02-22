@@ -15,8 +15,6 @@ void benchmark(char *fileName, int times) {
 	int outWidth = 800 / 8 * 1.5;
 	int outHeight = 640 / 16 * 1.5;
 
-	char *out = itu_allocate_string(outWidth, outHeight);
-
 	printf("==== BENCHMARK RESULTS (%d samples) ====\n", times);
 
 	for (int i = 0; i < 7; i++) {
@@ -24,7 +22,7 @@ void benchmark(char *fileName, int times) {
 		struct timeval start;
 		gettimeofday(&start, NULL);
 
-		for (int j = 0; j < times; j++) itu_convert_image(out, data, width, height, outWidth, outHeight, i);
+		for (int j = 0; j < times; j++) free(itu_convert_image(data, width, height, outWidth, outHeight, i));
 
 		struct timeval end;
 		gettimeofday(&end, NULL);
@@ -42,7 +40,6 @@ void benchmark(char *fileName, int times) {
 	}
 
 	free(data);
-	free(out);
 }
 
 void display(char *fileName) {
@@ -52,8 +49,7 @@ void display(char *fileName) {
 	int outWidth = 800 / 8 * 1.5;
 	int outHeight = 640 / 16 * 1.5;
 
-	char *out = itu_allocate_string(outWidth, outHeight);
-	itu_convert_image(out, data, width, height, outWidth, outHeight, 6);
+	char *out = itu_convert_image(data, width, height, outWidth, outHeight, 6);
 
 	printf("%s\n", out);
 	free(data);
