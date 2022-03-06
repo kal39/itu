@@ -22,7 +22,11 @@ void benchmark(char *fileName, int times) {
 		struct timeval start;
 		gettimeofday(&start, NULL);
 
-		for (int j = 0; j < times; j++) free(itu_convert_image(data, width, height, outWidth, outHeight, i));
+		for (int j = 0; j < times; j++) {
+			itu_TextImage img = itu_create_TextImage(data, width, height, outWidth, outHeight, i);
+			free(itu_to_string(img));
+			itu_destroy_TextImage(img);
+		}
 
 		struct timeval end;
 		gettimeofday(&end, NULL);
@@ -43,20 +47,23 @@ void benchmark(char *fileName, int times) {
 }
 
 void display(char *fileName) {
-	int width, height;
-	unsigned char *data = stbi_load(fileName, &width, &height, NULL, 3);
-
 	int outWidth = 800 / 8 * 1.5;
 	int outHeight = 640 / 16 * 1.5;
 
-	char *out = itu_convert_image(data, width, height, outWidth, outHeight, 6);
+	int width, height;
+	unsigned char *data = stbi_load(fileName, &width, &height, NULL, 3);
+
+	itu_TextImage textImage = itu_create_TextImage(data, width, height, outWidth, outHeight, 6);
+	char *out = itu_to_string(textImage);
 
 	printf("%s\n", out);
+
+	itu_destroy_TextImage(textImage);
 	free(data);
 	free(out);
 }
 
 int main(void) {
-	display("train.png");
-	// benchmark("train.png", 10);
+	benchmark("train.png", 10);
+	// display("train.png");
 }

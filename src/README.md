@@ -2,7 +2,7 @@
 
 ```
 /*
- * Creates a string with the correct size to be used with itu_convert_image().
+ * Creates a string with the correct size to be used with itu_create_TextImage_image().
  *
  * Parameters:
  *   out_width:  width of the output image in characters
@@ -10,7 +10,7 @@
  *
  * Returns:
  *   NULL:   string creation unsuccessful
- *   (else): string that can be passed to itu_convert_image() <<<FREE AFTER USE!!>>>
+ *   (else): string that can be passed to itu_create_TextImage_image() <<<FREE AFTER USE!!>>>
  */
 
 char *itu_allocate_string(int out_width, int out_height);
@@ -34,6 +34,6 @@ char *itu_allocate_string(int out_width, int out_height);
  *   -2: malloc() failed
  */
 
-int itu_convert_image(char *out, unsigned char *data, int in_width, int in_height, int out_width, int out_height,
+int itu_create_TextImage_image(char *out, unsigned char *data, int in_width, int in_height, int out_width, int out_height,
 					  int detail);
 ```
