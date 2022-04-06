@@ -25,8 +25,7 @@ typedef struct itu_TextImage {
  *           NOTE: MUST BE FREED MANUALLY!!
  */
 
-itu_TextImage itu_create_TextImage(unsigned char *data, int inWidth, int inHeight, int outWidth, int outHeight,
-								   int detail);
+itu_TextImage itu_create_TextImage(unsigned char *data, int inWidth, int inHeight, int outWidth, int outHeight, int n);
 
 void itu_destroy_TextImage(itu_TextImage image);
 int itu_success(itu_TextImage image);
@@ -69,7 +68,7 @@ typedef struct itu_ThreadArgs {
 	itu_TextImage out;
 	itu_Image in;
 	int row;
-	int detail;
+	int n;
 } itu_ThreadArgs;
 
 itu_Character ALLOWED_CHARACTERS[] = {
@@ -229,14 +228,13 @@ itu_Character ALLOWED_CHARACTERS[] = {
 static long itu_calculate_color(itu_Character character, itu_Image image, int x, int y, itu_Color *fgColor,
 								itu_Color *bgColor) {
 	// don't use itu_Color because it uses unsigned chars to store rgb values; thus overflows
-	int fgColorArr[3] = {0, 0, 0}, bgColorArr[3] = {0, 0, 0};
-	int fgColorCount = 0, bgColorCount = 0, error = 0;
+	int fgColorArr[3] = {0, 0, 0}, bgColorArr[3] = {0, 0, 0}, fgColorCount = 0, bgColorCount = 0, error = 0;
 
 	for (int i = 0; i < CHARACTER_HEIGHT; i++) {
 		for (int j = 0; j < CHARACTER_WIDTH; j++) {
-			int pos_x = (int)((float)(j + x * CHARACTER_WIDTH) / image.scale_x);
-			int pos_y = (int)((float)(i + y * CHARACTER_HEIGHT) / image.scale_y);
-			int idx = (pos_y * image.width + pos_x) * 3;
+			int pos_x = (int)((float)(j + x * CHARACTER_WIDTH) / image.scale_x),
+				pos_y = (int)((float)(i + y * CHARACTER_HEIGHT) / image.scale_y),
+				idx = (pos_y * image.width + pos_x) * 3;
 
 			// colorArr and colorCount point to either fg or bg variables
 			int(*colorArr)[3] = character.pixels[i * CHARACTER_WIDTH + j] ? &fgColorArr : &bgColorArr;
@@ -257,7 +255,6 @@ static long itu_calculate_color(itu_Character character, itu_Image image, int x,
 	fgColor->r = fgColorArr[0] / fgColorCount;
 	fgColor->g = fgColorArr[1] / fgColorCount;
 	fgColor->b = fgColorArr[2] / fgColorCount;
-
 	bgColor->r = bgColorArr[0] / bgColorCount;
 	bgColor->g = bgColorArr[1] / bgColorCount;
 	bgColor->b = bgColorArr[2] / bgColorCount;
@@ -265,12 +262,11 @@ static long itu_calculate_color(itu_Character character, itu_Image image, int x,
 	return error;
 }
 
-static void itu_convert_image_area(itu_TextImage out, itu_Image in, int col, int row, int detail) {
-	int min = INT_MAX;
-	int minCharIdx;
+static void itu_convert_image_area(itu_TextImage out, itu_Image in, int col, int row, int n) {
+	int min = INT_MAX, minCharIdx;
 	itu_Color minFgColor, minBgColor;
 
-	for (int i = 0; i < CUTOFF_POINT[detail]; i++) {
+	for (int i = 0; i < CUTOFF_POINT[n]; i++) {
 		itu_Color fgColor, bgColor;
 		int error = itu_calculate_color(ALLOWED_CHARACTERS[i], in, col, row, &fgColor, &bgColor);
 
@@ -293,16 +289,15 @@ static void itu_convert_image_area(itu_TextImage out, itu_Image in, int col, int
 
 static void *itu_convert_row_threaded(void *_args) {
 	itu_ThreadArgs *args = (itu_ThreadArgs *)_args;
-	for (int j = 0; j < args->out.width; j++) itu_convert_image_area(args->out, args->in, j, args->row, args->detail);
+	for (int j = 0; j < args->out.width; j++) itu_convert_image_area(args->out, args->in, j, args->row, args->n);
 }
 
-itu_TextImage itu_create_TextImage(unsigned char *data, int inWidth, int inHeight, int outWidth, int outHeight,
-								   int detail) {
+itu_TextImage itu_create_TextImage(unsigned char *data, int inWidth, int inHeight, int outWidth, int outHeight, int n) {
 	if (inWidth < 0 || inHeight < 0 || outWidth < 0 || outHeight < 0) return (itu_TextImage){NULL, 0, 0};
+	n = n < 0 ? 0 : n > CUTOFF_POINT_COUNT - 1 ? CUTOFF_POINT_COUNT - 1 : n;
 
-	detail = detail < 0 ? 0 : detail > CUTOFF_POINT_COUNT - 1 ? CUTOFF_POINT_COUNT - 1 : detail;
-	float scale_x = (float)outWidth * (float)CHARACTER_WIDTH / (float)inWidth;
-	float scale_y = (float)outHeight * (float)CHARACTER_HEIGHT / (float)inHeight;
+	float scale_x = (float)outWidth * (float)CHARACTER_WIDTH / (float)inWidth,
+		  scale_y = (float)outHeight * (float)CHARACTER_HEIGHT / (float)inHeight;
 
 	itu_Image in = (itu_Image){data, inWidth, inHeight, scale_x, scale_y};
 	itu_TextImage out = (itu_TextImage){malloc(outWidth * outHeight * 7), outWidth, outHeight};
@@ -317,7 +312,7 @@ itu_TextImage itu_create_TextImage(unsigned char *data, int inWidth, int inHeigh
 			out,
 			in,
 			i,
-			detail,
+			n,
 		};
 
 		pthread_create(&threads[i], NULL, itu_convert_row_threaded, &args[i]);
@@ -343,12 +338,10 @@ int itu_success(itu_TextImage image) {
 char *itu_to_string(itu_TextImage image) {
 	// characters + newlines + color reset + \0
 	long len = CHARACTER_STRLEN * image.width * image.height + (image.height - 1) + 4 + 1;
-
 	char *out = malloc(len);
 	if (!out) return NULL;
 
-	long offset = 0;
-	long idx = 0;
+	long offset = 0, idx = 0;
 
 	for (int i = 0; i < image.height; i++) {
 		for (int j = 0; j < image.width; j++) {

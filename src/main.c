@@ -64,6 +64,6 @@ void display(char *fileName) {
 }
 
 int main(void) {
-	benchmark("train.png", 10);
-	// display("train.png");
+	// benchmark("train.png", 10);
+	display("train.png");
 }
